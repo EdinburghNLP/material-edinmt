@@ -1,4 +1,4 @@
-# edinmt-docker
+# material-edinmt
 
 ## Introduction
 
