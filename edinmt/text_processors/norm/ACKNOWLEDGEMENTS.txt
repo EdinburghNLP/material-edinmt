@@ -1,0 +1,4 @@
+This code comes from Ramy Eksander's normalization scripts for the MATERIAL project:
+https://github.com/rnd2110/SCRIPTS_Normalization
+
+We include it here, because some of our models are trained using a symbol set created in part by preprocessing with these scripts. The specific commit id that we used for our models is logged in the commit_id.txt file.

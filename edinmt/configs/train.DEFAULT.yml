@@ -1,0 +1,58 @@
+model: model.npz 
+type: transformer 
+devices:
+    - 0
+workspace: 6144 
+mini-batch-fit: true 
+vocabs: 
+    - vocab.yml 
+    - vocab.yml 
+train-sets: 
+    - train.INPUT
+    - train.OUTPUT 
+valid-sets: 
+    - valid.INPUT
+    - valid.OUTPUT 
+log: train.log 
+valid-log: valid.log 
+valid-translation-output: valid.mtout
+valid-script-path: "sh ./validate.sh"
+quiet-translation: true 
+valid-metrics: 
+    - ce-mean-words
+    - perplexity 
+    - translation
+valid-freq: 5000 
+save-freq: 5000 
+disp-freq: 500 
+sync-sgd: true
+max-length: 200 
+max-length-factor: 2
+valid-max-length: 200
+maxi-batch: 1000 
+early-stopping: 10 
+cost-type: ce-mean-words
+valid-mini-batch: 64 
+beam-size: 6 
+normalize: 0.6 
+enc-depth: 6 
+dec-depth: 6 
+transformer-heads: 8 
+transformer-postprocess-emb: d 
+transformer-postprocess: dan 
+transformer-dropout: 0.1 
+label-smoothing: 0.1 
+learn-rate: 0.0003 
+lr-warmup: 16000 
+lr-decay-inv-sqrt: 16000 
+lr-report: true
+optimizer-params: 
+    - 0.9 
+    - 0.98 
+    - 1e-09 
+clip-norm: 5 
+tied-embeddings-all: true 
+seed: 1112 
+exponential-smoothing: true 
+keep-best: true 
+overwrite: false 

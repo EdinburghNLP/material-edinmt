@@ -1,0 +1,26 @@
+## EdinMT Docker to translate folders 
+
+The Docker image translates an input folder of source language text files into the same directory structure in an output folder.
+
+## Requirements
+
+This Docker image uses GPUs and therefore requires `nvidia-docker` to be installed on your system in addition to Docker. 
+
+- [Docker](https://www.docker.com/)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker) (to use GPUs)
+
+## Instructions
+
+The Docker container requires mounted directories read from, which can be done using the docker `-v` flag. The mounted directories should be in a location that Docker has read/write access to. Arguments include to the `translate` command are:
+
+```
+translate src_lang tgt_lang input_dir output_dir --fmt {json,marian,text} --devices [GPUS]
+```
+
+where `input_dir` and `output_dir` are the directories that were mounted inside of the Docker container, and where `fmt=json` by default, meaning the output will consist of json-lines format, once sentence per line. To get plaintext format, use `--fmt text`.  
+
+For example, the following command would use an accurate fa->en model to translate all the text files inside of `~/input_dir` into plaintext files in the same directory structure in `~/output_dir`. It would use GPUS 0 and 1 (default uses CPUs and is much slower).
+
+```
+docker run --gpus all --rm -v ~/input_dir:/mt/input_dir -v ~/output_dir:/mt/output_dir --name edinmt scriptsmt/systems:v25.0.0 translate fa en /mt/input_dir /mt/output_dir --fmt text --devices 0 1
+```

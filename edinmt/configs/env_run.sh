@@ -1,0 +1,6 @@
+DEVICES=4
+SRC=fa
+TGT=en
+MODE=fast
+NBEST=0
+NBEST_WORDS=0
