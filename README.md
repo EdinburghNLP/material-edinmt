@@ -2,13 +2,29 @@
 
 ## Introduction
 
-This is a pipeline for building and releasing machine translation systems. 
+This is a pipeline for building and releasing machine translation systems. It can be used to translate a directory of small documents, or to run a server.  
 
-We use the `marian-server` of [MarianNMT](https://marian-nmt.github.io/) to serve inference. We connect to the `marian-server` through our own a python translation server, which includes the necessary data preprocessing layers (e.g. byte-pair encoding, tokenization, etc.). The system runs in one [Docker](https://www.docker.com/) container, which uses the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker) to expose GPUs. The Dockerfile incorporates a Makefile to build some of the dependencies. Additional scripts are also included that can invoke the `marian-decoder` directly (rather than going through the server) to make translations. 
+The system runs in one [Docker](https://www.docker.com/) container, which uses the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker) to expose GPUs. The Dockerfile incorporates a Makefile to build some of the dependencies. Additional scripts are also included that can invoke the `marian-decoder` directly (rather than going through the server) to make translations.  
 
-For this repo, we use [Semantic Versioning](https://semver.org) with [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) and a changelog for this codebase, which can be automated using [python-semantic-release](https://python-semantic-release.readthedocs.io/en/latest/) and [commitizen](https://pypi.org/project/commitizen/) (See section For Developers below). 
+## Supported language directions and features
 
-For model and Docker image versioning, we use semantic versioning as well, but we don't have it automated.  
+Supported language directions include English to/from Swahili, Tagalog, Somali, Lithuanian, Bulgarian, Farsi, Kazakh, and Georgian. Not all language directions support all features. The following table lists the features supported for each language direction (as of models v25.0.0).
+
+- Text is normal text translation.
+- Audio are models that were trained with ASR outputs in mind.
+- Query are models that support query guided translation.
+
+|       |text |audio |query  |
+|-------|-----|------|-------|
+|en<>sw |ok   |N/A   |N/A    |
+|en<>tl |ok   |N/A   |N/A    |
+|en<>so |ok   |ok    |N/A    |
+|en<>ps |ok   |N/A   |N/A    |
+|en<>lt |ok   |N/A   |N/A    |
+|en<>bg |ok   |N/A   |N/A    |
+|en<>fa |ok   |ok    |N/A    |
+|en<>kk |ok   |ok    |kk->en |
+|en<>ka |ok   |ok    |ka->en |
 
 ## Requirements
 
@@ -37,7 +53,7 @@ FMT=json            #output format of "json", "marian", "text" (default is "json
 To use the docker container to translate a folder, you will need to use the `-v` flag to mount the input and output directory into the container. Note that the directories need to be located where docker has read/write permissions. 
 
 ```
-docker run --gpus all --rm -v ~/input_dir:/mt/input_dir -v ~/output_dir:/mt/output_dir --env-file=edinmt/configs/env_run.sh --name edinmt scriptsmt/systems:v24.0.0 translate src_lang tgt_lang /mt/input_dir /mt/output_dir
+docker run --gpus all --rm -v ~/input_dir:/mt/input_dir -v ~/output_dir:/mt/output_dir --env-file=edinmt/configs/env_run.sh --name edinmt scriptsmt/systems:v25.0.0 translate src_lang tgt_lang /mt/input_dir /mt/output_dir
 ```
 
 NOTE: This command passes any additional unrecognized arguments directly to the [marian-decoder](https://marian-nmt.github.io/docs/cmd/marian-decoder/), which override any pre-set environment variables.
@@ -52,7 +68,7 @@ For those systems that support query-guided translation, in addition to setting 
 The Docker container can be used to fine-tune one of our pre-trained models on your own training and validation data. To use this functionality, you need to mount volumes in the docker container which contain your train/valid data, and provide the `finetune` command with the filepath arguments, e.g.:
 
 ```
-docker run --gpus all --rm -v ~/data:/mt/data -v ~/finetuned_dir:/mt/finetuned_dir --env-file=edinmt/configs/env_run.sh --name edinmt scriptsmt/systems:v24.0.0 finetune fa en /mt/finetuned_dir --train /mt/data/train.fa /mt/data/train.en --valid /mt/data/valid.fa /mt/data/valid.en
+docker run --gpus all --rm -v ~/data:/mt/data -v ~/finetuned_dir:/mt/finetuned_dir --env-file=edinmt/configs/env_run.sh --name edinmt scriptsmt/systems:v25.0.0 finetune fa en /mt/finetuned_dir --train /mt/data/train.fa /mt/data/train.en --valid /mt/data/valid.fa /mt/data/valid.en
 ```
 
 NOTE: We use an internal train config for this command, but we do pass any additional unrecognized arguments directly to the [marian](https://marian-nmt.github.io/docs/cmd/marian/) afterwards, which override any pre-set environment variables and the internal config.
@@ -62,17 +78,19 @@ NOTE: We use an internal train config for this command, but we do pass any addit
 The fine-tuned model can then be used to translate folders (same command as above) by changing the SYSTEMS_DIR environment variable to point to the directory where the model was created. The directory will need to be re-mounted using the docker `-v` flag.
 
 ```
-docker run --gpus all --rm -v ~/finetuned_dir:/mt/finetuned_dir -v ~/input_dir:/mt/input_dir -v ~/output_dir:/mt/output_dir -e SYSTEMS_DIR=/mt/finetuned_dir --name edinmt scriptsmt/systems:v24.0.0 translate src_lang tgt_lang /mt/input_dir /mt/output_dir
+docker run --gpus all --rm -v ~/finetuned_dir:/mt/finetuned_dir -v ~/input_dir:/mt/input_dir -v ~/output_dir:/mt/output_dir -e SYSTEMS_DIR=/mt/finetuned_dir --name edinmt scriptsmt/systems:v25.0.0 translate src_lang tgt_lang /mt/input_dir /mt/output_dir
 ```
 
 ## Run the Docker translation server
 
 The Docker image comes with a translation server that runs on a websocket connection and accepts json inputs. 
 
+We use the `marian-server` of [MarianNMT](https://marian-nmt.github.io/) to serve inference. We connect to the `marian-server` through our own a python translation server, which includes the necessary data preprocessing layers (e.g. byte-pair encoding, tokenization, etc.). 
+
 To launch the server, first edit `edinmt/configs/env_run.sh` with your settings for the same options as in the translator (or use the `-e` environment flags). Then start the docker container with the `serve` directive:
 
 ```
-docker run --gpus all --rm --env-file=edinmt/configs/env_run.sh --name edinmt scriptsmt/systems:v24.0.0 serve
+docker run --gpus all --rm --env-file=edinmt/configs/env_run.sh --name edinmt scriptsmt/systems:v25.0.0 serve
 ```
 
 The server accepts json input. Here is a python example (input sentences separated by `\n`):
@@ -118,8 +136,8 @@ Each docker container runs only one system, but multiple systems (both servers a
 For running the server with `serve`, you may wish to map the ports in this case. By default, each container runs the marian-server on 8080 and the translation pipeline server on 8081 internally, so if you may want to redirect those ports to something else on your host machine. In this case, please ensure you use different GPUs for each container. For example:
 
 ```
-docker run --gpus all --rm --env-file=env_faen.sh -e DEVICES=0,1 -p 2012:8080 -p 3012:8081 --name faen scriptsmt/systems:v24.0.0 serve 
-docker run --gpus all --rm --env-file=env_enfa.sh -e DEVICES=2,3 -p 2013:8080 -p 3013:8081 --name enfa scriptsmt/systems:v24.0.0 serve
+docker run --gpus all --rm --env-file=env_faen.sh -e DEVICES=0,1 -p 2012:8080 -p 3012:8081 --name faen scriptsmt/systems:v25.0.0 serve 
+docker run --gpus all --rm --env-file=env_enfa.sh -e DEVICES=2,3 -p 2013:8080 -p 3013:8081 --name enfa scriptsmt/systems:v25.0.0 serve
 ```
 
 TODO: We could automate this with docker-compose instead? Does the nvidia runtime work in the latest version (https://github.com/docker/compose/issues/6691)? 
@@ -127,6 +145,36 @@ TODO: We could automate this with docker-compose instead? Does the nvidia runtim
 ## Building the Docker image
 
 The Makefile includes commands for `docker-build` for convenience. You can always invoke `docker build` manually with your own settings instead. 
+
+To build, you will need the model directory, which contains subdirectories for each of the translation directions, e.g. `systems.v25.0.0`. The directory should contain all of the necessary vocab, bpe model, truecase model, the MT models themselves, marian config files, etc., for example:
+
+```
+...
+├── enka
+│   ├── bpe.model
+│   ├── bpe.vocab
+│   ├── config-fast.yml
+│   ├── config.yml
+│   ├── model1.npz
+│   ├── model2.npz
+│   ├── model3.npz
+│   ├── model4.npz
+│   ├── validate.sh
+│   └── vocab.yml
+├── faen
+│   ├── config-fast.yml
+│   ├── config.yml
+│   ├── faen.bpe
+│   ├── model1.npz
+│   ├── model2.npz
+│   ├── model3.npz
+│   ├── model4.npz
+│   ├── tc.fa
+│   ├── train.yml
+│   ├── validate.sh
+│   └── vocab.yml
+...
+``` 
 
 To build, edit the variables in `edinmt/configs/env_build.sh` and then run:
 
@@ -167,62 +215,39 @@ Next, follow these steps to create a new docker image and publish a new version 
 make docker-build
 make docker-run
 ```
-6. Test that everything runs correctly (this will take some minutes since we test translations): 
+5. Test that everything runs correctly (this will take some minutes since we test translations): 
 ```
 make docker-test
 ```
-7. Save the docker into a tar file:
+6. Save the docker into a tar file:
 ```
 make docker-save
 ```
-8. Update this README.md with anything that might have changed and *please be super detailed!* 
-9. Add your changes for this repo:
+7. Update this README.md with anything that might have changed and *please be super detailed!* 
+8. Add your changes for this repo:
 ```
 git add <your-changed-files>
 ```
-10. Commit to Git using Conventional Commit format:
+9. Commit to Git using Conventional Commit format:
 ```
 cz commit
 ```
-11. Create a new tagged commit with an updated semver number and git tag: 
+10. Create a new tagged commit with an updated semver number and git tag, e.g. using semantic-release: 
 ```
 semantic-release version
 ```
-12. Update the changelog, and edit CHANGELOG.md with the new semantic release version and date: 
+11. Update the changelog, and edit CHANGELOG.md with the new semantic release version and date: 
 ```
 mv CHANGELOG.md CHANGELOG.md.bck; cat <(semantic-release changelog) CHANGELOG.md.bck > CHANGELOG.md
 git add CHANGELOG.md; git commit --amend
 ```
-13. Push to GitHub: 
+12. Push to GitHub: 
 ```
 git push
 git push --tags
 ```
-14. Release the model: 
-```
-cp -r systems.v<model-version> /fs/vali0/www/data.statmt.org/<user>/scriptsmt/
-```
-15. Release the Docker container by manually copying it to the server: 
-```
-scp ./scriptsmt-systems\:<docker-version>.tar <user>@scripts.neural.mt:/storage/docker-images
-```
 
 TODO: add Github Actions for release?
-
-### Versioning
-
-Install a local python environment, in order to install the semantic versioning software and for testing purposes:
-```
-conda create --name edinmt-docker python=3.7
-conda activate edinmt-docker
-```
-
-```
-pip install python-semantic-release
-pip install commitizen
-```
-
-NOTE: To fully automate `python-semantic-release`, you will need to add a [personal access token](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) to make semantic-release be able to use GitHub. See also their docs for more details at [https://python-semantic-release.readthedocs.io/en/latest/](https://python-semantic-release.readthedocs.io/en/latest/). The above release steps work without this though. 
 
 ### MATERIAL Requirements
 
@@ -299,13 +324,13 @@ The following is a brief walkthrough of some of the included files, to aid in de
 - *edinmt/get_settings.py*: the code here combines environment variables with user settings to get the final settings to invoke the marian-decoder or marian-server (e.g. finding the config files, setting up the devices command, etc.). We use a mutli-tiered system, in which environment variables are read from first (if unspecified, a default is used), and then CLI arguments overwrite them. 
 
 - *edinmt/parse_marian.py*: parse the output from marian-decoder (e.g. read the lines with ||| and take care of numbering the final output sentence ids correctly)
+- *_TODO_*: the parser is disasterously inefficient for big files, since it was assumed we'd have a directory of small files like in the MATERIAL project. This is the biggest problem in scalability right now.
 
 - *edinmt/translate_folder.py*: functions that read inputs from files, send it to translation (to marian-decoder or to the running server), invoke the parsers, and write the output back to files in an output directory using the same directory structure
 
-- *edinmt/translate_input.py*: functions that read inputs from stdin, send it to translation (to marian-decoder or to the running server), invoke the parsers, and write the output back to stdout
+- *edinmt/translate_input.py*: functions that read inputs from stdin, send it to translation (to marian-decoder or to the running server), invoke the parsers, and write the output back to stdout.
 
 - *edinmt/utils.py*: small bits of code re-used in other places around this package
-
 
 - *edinmt/cli/*: command-line interface scripts which also get copied into /mt in the Docker for convenience
 
