@@ -190,8 +190,6 @@ docker build -t scriptsmt/systems:${DOCKER_VERSION} .
 
 where `${DOCKER_VERSION}` is found in `env_build.sh` by the `Makefile`.
 
-Note that the `env_build.sh` variables also include a `MODEL_VERSION`, which is downloaded from `http://data.statmt.org/<user_name>/scriptsmt/systems.<model_version>`. 
-
 
 ## For Developers
 
